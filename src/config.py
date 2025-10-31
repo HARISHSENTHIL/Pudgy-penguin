@@ -7,8 +7,8 @@ import torch
 from pathlib import Path
 from dotenv import load_dotenv
 
-# Load .env file
-load_dotenv()
+# Load .env file (override=True allows reloading when .env changes)
+load_dotenv(override=True)
 
 
 class Config:
@@ -44,6 +44,7 @@ class Config:
     DEFAULT_IMAGE_GUIDANCE = float(os.getenv("DEFAULT_IMAGE_GUIDANCE", "3.5"))
 
     DEFAULT_NUM_FRAMES = int(os.getenv("DEFAULT_NUM_FRAMES", "49"))
+    print("DEFAULT_NUM_FRAMES:", DEFAULT_NUM_FRAMES)
     DEFAULT_VIDEO_STEPS = int(os.getenv("DEFAULT_VIDEO_STEPS", "50"))
     DEFAULT_VIDEO_GUIDANCE = float(os.getenv("DEFAULT_VIDEO_GUIDANCE", "6.0"))
 
