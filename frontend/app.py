@@ -44,7 +44,7 @@ def generate_gif(prompt, use_enhancer, lora_scale, image_seed, video_seed):
                 output_path = Path(f"temp_{job_id}.gif")
                 output_path.write_bytes(gif_response.content)
 
-                yield str(output_path), f"✅ Complete!"
+                yield str(output_path), f"Completed!"
                 break
 
             elif status_info["status"] == "failed":
@@ -53,7 +53,7 @@ def generate_gif(prompt, use_enhancer, lora_scale, image_seed, video_seed):
                 break
 
             elif status_info["status"] == "processing":
-                status_text = f"🎨 Generating... (Job: {job_id})"
+                status_text = f"Generating!"
                 yield None, status_text
 
             time.sleep(3)
