@@ -6,6 +6,7 @@ import multiprocessing
 import uvicorn
 from src.worker import JobWorker
 from src.config import Config
+from src.database import init_db
 
 
 def start_api():
@@ -34,6 +35,11 @@ def main():
 
     # Print configuration
     Config.print_config()
+
+    # Initialize database BEFORE starting processes
+    print("\n📊 Initializing database...")
+    init_db()
+    print("✅ Database initialized")
 
     print("\n📍 API will be available at:")
     print(f"   http://{Config.API_HOST}:{Config.API_PORT}")
