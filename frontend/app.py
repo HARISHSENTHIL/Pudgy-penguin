@@ -3,7 +3,7 @@ import requests
 import time
 from pathlib import Path
 
-API_URL = "http://localhost:8000"
+API_URL = "http://localhost:8001"
 
 def generate_gif(prompt, use_enhancer, lora_scale, image_seed, video_seed):
     if not prompt.strip():
@@ -44,7 +44,7 @@ def generate_gif(prompt, use_enhancer, lora_scale, image_seed, video_seed):
                 output_path = Path(f"temp_{job_id}.gif")
                 output_path.write_bytes(gif_response.content)
 
-                yield str(output_path), f"✅ Complete! Job: {job_id}"
+                yield str(output_path), f"✅ Complete!"
                 break
 
             elif status_info["status"] == "failed":
@@ -62,8 +62,8 @@ def generate_gif(prompt, use_enhancer, lora_scale, image_seed, video_seed):
         yield None, f"❌ API Error: {str(e)}"
 
 with gr.Blocks(theme=gr.themes.Soft(), title="Pudgy GIF Generator") as app:
-    gr.Markdown("# 🐧 Pudgy GIF Generator")
-    gr.Markdown("Create animated Pudgy Penguin GIFs with AI")
+    gr.Markdown("# 🐙 OPEN Pudgy GIF Generator")
+    gr.Markdown("Create animated Pudgy Penguin GIFs with OpenLedger")
 
     with gr.Row():
         with gr.Column(scale=1):
@@ -91,8 +91,8 @@ with gr.Blocks(theme=gr.themes.Soft(), title="Pudgy GIF Generator") as app:
         outputs=[gif_output, status_output]
     )
 
-    gr.Markdown("---")
-    gr.Markdown("Powered by FLUX + Pudgy LoRA + CogVideoX")
+    # gr.Markdown("---")
+    # gr.Markdown("Powered by FLUX + Pudgy LoRA + CogVideoX")
 
 if __name__ == "__main__":
-    app.launch(server_name="0.0.0.0", server_port=7860, share=False)
+    app.launch(server_name="0.0.0.0", server_port=7861, share=False)

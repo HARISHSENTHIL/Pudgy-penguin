@@ -101,7 +101,8 @@ class PudgyGIFGenerator:
         )
 
         # Enable memory optimizations
-        self.video_pipe.enable_model_cpu_offload()
+        
+        # self.video_pipe.enable_model_cpu_offload()
         self.video_pipe.vae.enable_slicing()
         self.video_pipe.vae.enable_tiling()
 
