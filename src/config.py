@@ -33,7 +33,7 @@ class Config:
 
     # Model Paths
     FLUX_MODEL = os.getenv("FLUX_MODEL", "black-forest-labs/FLUX.1-dev")
-    LORA_ID = os.getenv("LORA_ID", "creatorchain/Pudgy_2.0")
+    LORA_ID = os.getenv("LORA_ID", "Harish-as-harry/Pudgy-penguin")
     COGVIDEO_MODEL = os.getenv("COGVIDEO_MODEL", "THUDM/CogVideoX-5b-I2V")
 
     # Generation Defaults
