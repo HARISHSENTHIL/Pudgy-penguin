@@ -4,6 +4,7 @@ Monitors database for queued jobs and processes them one-by-one.
 """
 
 import time
+from datetime import datetime
 from pathlib import Path
 
 from src.database import SessionLocal, get_queued_jobs, update_job_status, get_job
@@ -58,7 +59,7 @@ class JobWorker:
 
             # Update status to processing
             job.status = "processing"
-            job.updated_at = time.time()
+            job.updated_at = datetime.utcnow()
             db.commit()
 
             print(f"\n{'='*60}")
