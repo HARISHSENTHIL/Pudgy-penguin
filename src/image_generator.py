@@ -48,10 +48,9 @@ class PudgyGIFGenerator:
         self.output_dir = Config.OUTPUT_DIR
         self.output_dir.mkdir(exist_ok=True)
 
-        # Thread locks for concurrent inference safety
+        # Thread-local storage for thread safety
         import threading
-        self.flux_lock = threading.Lock()
-        self.video_lock = threading.Lock()
+        self._thread_local = threading.local()
 
         flux_model = flux_model or Config.FLUX_MODEL
         lora_id = lora_id or Config.LORA_ID
@@ -198,17 +197,16 @@ class PudgyGIFGenerator:
             generator = torch.Generator(device=self.device).manual_seed(seed)
             print(f"   Seed: {seed}")
 
-        # Generate with thread lock for concurrent inference safety
-        with self.flux_lock:
-            result = self.flux_pipe(
-                prompt=prompt,
-                negative_prompt=negative_prompt,
-                width=width,
-                height=height,
-                num_inference_steps=num_inference_steps,
-                guidance_scale=guidance_scale,
-                generator=generator,
-            )
+        # Generate (PyTorch handles internal thread safety)
+        result = self.flux_pipe(
+            prompt=prompt,
+            negative_prompt=negative_prompt,
+            width=width,
+            height=height,
+            num_inference_steps=num_inference_steps,
+            guidance_scale=guidance_scale,
+            generator=generator,
+        )
 
         image = result.images[0]
 
@@ -251,17 +249,16 @@ class PudgyGIFGenerator:
             generator = torch.Generator(device=self.device).manual_seed(seed)
             print(f"   Seed: {seed}")
 
-        # Generate video frames with thread lock for concurrent inference safety
-        with self.video_lock:
-            video_frames = self.video_pipe(
-                prompt=motion_prompt,
-                image=image,
-                num_videos_per_prompt=1,
-                num_inference_steps=num_inference_steps,
-                num_frames=num_frames,
-                guidance_scale=guidance_scale,
-                generator=generator,
-            ).frames[0]
+        # Generate video frames (PyTorch handles internal thread safety)
+        video_frames = self.video_pipe(
+            prompt=motion_prompt,
+            image=image,
+            num_videos_per_prompt=1,
+            num_inference_steps=num_inference_steps,
+            num_frames=num_frames,
+            guidance_scale=guidance_scale,
+            generator=generator,
+        ).frames[0]
 
         print(f"✅ Video generated ({len(video_frames)} frames)")
         return video_frames
