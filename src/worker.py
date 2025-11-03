@@ -28,31 +28,47 @@ class JobWorker:
         """
         self.check_interval = check_interval or Config.WORKER_CHECK_INTERVAL
         self.concurrency = concurrency or Config.WORKER_CONCURRENCY
-        self.generator = None
-        self.generator_lock = threading.Lock()
         self.db_lock = threading.Lock()  # SQLite thread safety lock
+
+        # Thread-local storage for per-thread generators
+        self._thread_local = threading.local()
 
         print("🔧 Initializing Job Worker...")
         Config.print_config()
         print(f"\n   Check interval: {self.check_interval}s")
         print(f"   Concurrency: {self.concurrency} job(s) in parallel")
 
-    def initialize_generator(self):
-        """Initialize the PudgyGIFGenerator (lazy loading). Uses Config defaults. Thread-safe."""
-        with self.generator_lock:
-            if self.generator is None:
-                print("\n🐧 Loading AI models (this may take a while)...")
-                # Generator will use Config values automatically
-                self.generator = PudgyGIFGenerator()
-                print("✅ Models loaded and ready!\n")
+        if self.concurrency > 1:
+            print(f"   ⚡ Multi-threaded mode enabled!")
+            print(f"   ⚠️  Note: Each thread will load its own model instance")
+
+    def get_thread_generator(self):
+        """
+        Get or create a PudgyGIFGenerator instance for the current thread.
+        This ensures each thread has its own model instance to avoid conflicts.
+        Thread-safe and lazy-loading.
+
+        Returns:
+            PudgyGIFGenerator instance for this thread
+        """
+        if not hasattr(self._thread_local, 'generator') or self._thread_local.generator is None:
+            thread_id = threading.current_thread().name
+            print(f"\n🐧 [{thread_id}] Loading AI models for this thread (this may take a while)...")
+            # Each thread gets its own generator instance
+            self._thread_local.generator = PudgyGIFGenerator()
+            print(f"✅ [{thread_id}] Models loaded and ready!\n")
+
+        return self._thread_local.generator
 
     def process_job(self, job_id: str):
         """
-        Process a single job. Thread-safe with separate DB session.
+        Process a single job. Thread-safe with separate DB session and model instance.
 
         Args:
             job_id: Job ID to process
         """
+        thread_id = threading.current_thread().name
+
         # Create separate DB session for this thread
         db = SessionLocal()
         try:
@@ -63,13 +79,13 @@ class JobWorker:
                 return  # Job not found or not properly claimed
 
             print(f"\n{'='*60}")
-            print(f"📋 Processing Job: {job.id}")
+            print(f"📋 [{thread_id}] Processing Job: {job.id}")
             print(f"{'='*60}")
             print(f"Prompt: {job.prompt}")
 
             try:
-                # Initialize generator if not already done (thread-safe)
-                self.initialize_generator()
+                # Get thread-specific generator (lazy loads on first use per thread)
+                generator = self.get_thread_generator()
 
                 # Parse parameters from database
                 use_prompt_enhancer = job.use_prompt_enhancer.lower() == "true"
@@ -77,8 +93,8 @@ class JobWorker:
                 image_seed = int(job.image_seed) if job.image_seed else None
                 video_seed = int(job.video_seed) if job.video_seed else None
 
-                # Generate GIF (GPU will handle concurrent requests)
-                result = self.generator.generate_gif(
+                # Generate GIF (each thread has its own model instance)
+                result = generator.generate_gif(
                     prompt=job.prompt,
                     output_name=f"job_{job.id}",
                     use_prompt_enhancer=use_prompt_enhancer,
@@ -91,12 +107,12 @@ class JobWorker:
                 gif_path = str(result["gif_path"])
                 update_job_status(db, job.id, "completed", gif_path=gif_path)
 
-                print(f"\n✅ Job {job.id} completed successfully!")
+                print(f"\n✅ [{thread_id}] Job {job.id} completed successfully!")
                 print(f"   GIF: {gif_path}")
 
             except Exception as e:
                 error_msg = str(e)
-                print(f"\n❌ Job {job.id} failed: {error_msg}")
+                print(f"\n❌ [{thread_id}] Job {job.id} failed: {error_msg}")
 
                 # Update job with failed status
                 update_job_status(db, job.id, "failed", error_message=error_msg)
