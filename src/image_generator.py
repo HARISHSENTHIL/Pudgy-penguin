@@ -153,11 +153,11 @@ class PudgyGIFGenerator:
         self,
         prompt,
         negative_prompt="blurry, low quality, distorted, deformed",
-        width=720,
-        height=480,
-        num_inference_steps=28,
-        guidance_scale=3.5,
-        lora_scale=0.8,
+        width=None,
+        height=None,
+        num_inference_steps=None,
+        guidance_scale=None,
+        lora_scale=None,
         seed=None
     ):
         """
@@ -166,15 +166,22 @@ class PudgyGIFGenerator:
         Args:
             prompt: Text description of desired image
             negative_prompt: What to avoid
-            width/height: Image dimensions (720x480 recommended for CogVideoX)
-            num_inference_steps: Quality vs speed (20-50)
-            guidance_scale: Prompt adherence (3.0-7.0)
-            lora_scale: LoRA strength (0.6-1.2)
+            width/height: Image dimensions (defaults to Config)
+            num_inference_steps: Quality vs speed (defaults to Config)
+            guidance_scale: Prompt adherence (defaults to Config)
+            lora_scale: LoRA strength (defaults to Config)
             seed: Random seed for reproducibility
 
         Returns:
             PIL Image
         """
+        # Use Config defaults if not provided
+        width = width or Config.DEFAULT_IMAGE_WIDTH
+        height = height or Config.DEFAULT_IMAGE_HEIGHT
+        num_inference_steps = num_inference_steps or Config.DEFAULT_IMAGE_STEPS
+        guidance_scale = guidance_scale or Config.DEFAULT_IMAGE_GUIDANCE
+        lora_scale = lora_scale or Config.DEFAULT_LORA_SCALE
+
         print(f"🎨 Generating image: {prompt[:50]}...")
 
         # Set LoRA scale
@@ -206,9 +213,9 @@ class PudgyGIFGenerator:
         self,
         image,
         motion_prompt,
-        num_frames=49,
-        num_inference_steps=50,
-        guidance_scale=6.0,
+        num_frames=None,
+        num_inference_steps=None,
+        guidance_scale=None,
         seed=None
     ):
         """
@@ -217,14 +224,19 @@ class PudgyGIFGenerator:
         Args:
             image: PIL Image to animate
             motion_prompt: Describe the motion/animation
-            num_frames: Video length (49 = ~6 seconds at 8fps)
-            num_inference_steps: Quality (30-80)
-            guidance_scale: Motion adherence (5.0-8.0)
+            num_frames: Video length (defaults to Config)
+            num_inference_steps: Quality (defaults to Config)
+            guidance_scale: Motion adherence (defaults to Config)
             seed: Random seed
 
         Returns:
             List of PIL Images (video frames)
         """
+        # Use Config defaults if not provided
+        num_frames = num_frames or Config.DEFAULT_NUM_FRAMES
+        num_inference_steps = num_inference_steps or Config.DEFAULT_VIDEO_STEPS
+        guidance_scale = guidance_scale or Config.DEFAULT_VIDEO_GUIDANCE
+
         print(f"🎬 Animating to video: {motion_prompt[:50]}...")
         print(f"   Frames: {num_frames} ({num_frames/8:.1f}s @ 8fps)")
 
@@ -251,8 +263,8 @@ class PudgyGIFGenerator:
         self,
         frames,
         output_path,
-        fps=10,
-        max_width=640,
+        fps=None,
+        max_width=None,
         optimize=True
     ):
         """
@@ -261,13 +273,17 @@ class PudgyGIFGenerator:
         Args:
             frames: List of PIL Images
             output_path: Output .gif path
-            fps: Frames per second (8-12 recommended)
-            max_width: Max width in pixels (quality vs size)
+            fps: Frames per second (defaults to Config)
+            max_width: Max width in pixels (defaults to Config)
             optimize: Use high-quality palette
 
         Returns:
             Path to created GIF
         """
+        # Use Config defaults if not provided
+        fps = fps or Config.DEFAULT_GIF_FPS
+        max_width = max_width or Config.DEFAULT_GIF_WIDTH
+
         print(f"🎞️  Converting to GIF...")
         print(f"   FPS: {fps}, Max width: {max_width}")
 
@@ -320,34 +336,48 @@ class PudgyGIFGenerator:
         # Prompt enhancement
         use_prompt_enhancer=True,
         # Image generation params
-        image_width=720,
-        image_height=480,
-        image_steps=25,
-        image_guidance=3.5,
-        lora_scale=0.8,
+        image_width=None,
+        image_height=None,
+        image_steps=None,
+        image_guidance=None,
+        lora_scale=None,
         # Video generation params
-        num_frames=49,
-        video_steps=50,
-        video_guidance=6.0,
+        num_frames=None,
+        video_steps=None,
+        video_guidance=None,
         # GIF params
-        gif_fps=10,
-        gif_width=640,
+        gif_fps=None,
+        gif_width=None,
         # Seeds
         image_seed=None,
         video_seed=None
     ):
         """
         End-to-end: Generate branded image → animate → create GIF.
+        All parameters default to Config values from .env file.
 
         Args:
             prompt: Simple description (e.g., "pudgy penguin as ironman")
             motion_prompt: Description of motion (auto-enhanced if None and enhancer enabled)
             output_name: Output filename (auto-generated if None)
             use_prompt_enhancer: Use OpenAI to enhance prompts (default True)
+            All other params: Default to Config values if not provided
 
         Returns:
             dict with 'image', 'frames', 'gif_path'
         """
+        # Use Config defaults if not provided
+        image_width = image_width or Config.DEFAULT_IMAGE_WIDTH
+        image_height = image_height or Config.DEFAULT_IMAGE_HEIGHT
+        image_steps = image_steps or Config.DEFAULT_IMAGE_STEPS
+        image_guidance = image_guidance or Config.DEFAULT_IMAGE_GUIDANCE
+        lora_scale = lora_scale or Config.DEFAULT_LORA_SCALE
+        num_frames = num_frames or Config.DEFAULT_NUM_FRAMES
+        video_steps = video_steps or Config.DEFAULT_VIDEO_STEPS
+        video_guidance = video_guidance or Config.DEFAULT_VIDEO_GUIDANCE
+        gif_fps = gif_fps or Config.DEFAULT_GIF_FPS
+        gif_width = gif_width or Config.DEFAULT_GIF_WIDTH
+
         print("\n" + "="*60)
         print("🐧 PUDGY GIF GENERATION PIPELINE")
         print("="*60 + "\n")

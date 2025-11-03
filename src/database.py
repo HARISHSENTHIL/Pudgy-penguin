@@ -87,6 +87,26 @@ def update_job_status(db, job_id: str, status: str,
     return job
 
 
-def get_queued_jobs(db):
+def get_queued_jobs(db, limit=None):
     """Get all jobs with status 'queued'."""
-    return db.query(Job).filter(Job.status == "queued").all()
+    query = db.query(Job).filter(Job.status == "queued")
+    if limit:
+        query = query.limit(limit)
+    return query.all()
+
+
+def claim_job(db, job_id: str) -> bool:
+    """
+    Atomically claim a job by updating status from 'queued' to 'processing'.
+    Returns True if successfully claimed, False if already claimed by another thread.
+
+    This prevents race conditions where multiple threads try to process the same job.
+    """
+    job = db.query(Job).filter(Job.id == job_id, Job.status == "queued").first()
+    if job:
+        job.status = "processing"
+        job.updated_at = datetime.utcnow()
+        db.commit()
+        db.refresh(job)
+        return True
+    return False

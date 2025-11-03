@@ -10,7 +10,7 @@ from sqlalchemy.orm import Session
 from concurrent.futures import ThreadPoolExecutor, as_completed
 import threading
 
-from src.database import SessionLocal, get_queued_jobs, update_job_status
+from src.database import SessionLocal, get_queued_jobs, update_job_status, claim_job
 from src.image_generator import PudgyGIFGenerator
 from src.config import Config
 
@@ -30,6 +30,7 @@ class JobWorker:
         self.concurrency = concurrency or Config.WORKER_CONCURRENCY
         self.generator = None
         self.generator_lock = threading.Lock()
+        self.db_lock = threading.Lock()  # SQLite thread safety lock
 
         print("🔧 Initializing Job Worker...")
         Config.print_config()
@@ -58,17 +59,13 @@ class JobWorker:
             from src.database import get_job
             job = get_job(db, job_id)
 
-            if not job or job.status != "queued":
-                return  # Job already being processed or doesn't exist
+            if not job or job.status != "processing":
+                return  # Job not found or not properly claimed
 
             print(f"\n{'='*60}")
             print(f"📋 Processing Job: {job.id}")
             print(f"{'='*60}")
             print(f"Prompt: {job.prompt}")
-            print(f"Status: {job.status} → processing")
-
-            # Update status to processing
-            update_job_status(db, job.id, "processing")
 
             try:
                 # Initialize generator if not already done (thread-safe)
@@ -134,16 +131,19 @@ class JobWorker:
                         available_slots = self.concurrency - len(active_futures)
 
                         if available_slots > 0:
-                            # Get queued jobs to fill available slots
-                            queued_jobs = get_queued_jobs(db)
+                            # Get queued jobs to fill available slots (using Config.WORKER_CONCURRENCY dynamically)
+                            # Use lock to ensure thread-safe SQLite access
+                            with self.db_lock:
+                                queued_jobs = get_queued_jobs(db, limit=available_slots)
 
-                            if queued_jobs:
-                                jobs_to_start = queued_jobs[:available_slots]
-
-                                for job in jobs_to_start:
-                                    print(f"🚀 Starting job {job.id} ({len(active_futures) + 1}/{self.concurrency} slots)")
-                                    future = executor.submit(self.process_job, job.id)
-                                    active_futures[future] = job.id
+                                for job in queued_jobs:
+                                    # Atomically claim the job (prevents race conditions)
+                                    if claim_job(db, job.id):
+                                        print(f"🚀 Starting job {job.id} ({len(active_futures) + 1}/{self.concurrency} slots)")
+                                        future = executor.submit(self.process_job, job.id)
+                                        active_futures[future] = job.id
+                                    else:
+                                        print(f"⚠️  Job {job.id} already claimed by another thread")
 
                         # Show status
                         if active_futures:
