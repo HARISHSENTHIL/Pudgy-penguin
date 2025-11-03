@@ -57,7 +57,6 @@ class Config:
 
     # Worker Configuration
     WORKER_CHECK_INTERVAL = int(os.getenv("WORKER_CHECK_INTERVAL", "5"))
-    WORKER_CONCURRENCY = int(os.getenv("WORKER_CONCURRENCY", "1"))
 
     # Database Configuration
     DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./pudgy_jobs.db")
