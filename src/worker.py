@@ -121,9 +121,10 @@ class JobWorker:
             db.close()
 
     def run(self):
-        """Main worker loop - continuous processing. As soon as a job completes, pick next one."""
+        """Main worker loop - continuous processing. Picks up jobs immediately when slots available."""
         print("\n🚀 Worker started! Monitoring for new jobs...")
         print(f"   Concurrency: Up to {self.concurrency} job(s) running simultaneously")
+        print(f"   ⚡ Fast polling mode - picks up jobs immediately")
         print(f"   Press Ctrl+C to stop\n")
 
         try:
@@ -139,35 +140,41 @@ class JobWorker:
                             job_id = active_futures.pop(future)
                             try:
                                 future.result()
-                                print(f"✅ Job {job_id} completed")
+                                print(f"\n✅ Job {job_id} completed - slot now available!")
                             except Exception as e:
-                                print(f"❌ Job {job_id} failed: {e}")
+                                print(f"\n❌ Job {job_id} failed: {e}")
 
                         # Calculate how many slots are available
                         available_slots = self.concurrency - len(active_futures)
 
                         if available_slots > 0:
-                            # Get queued jobs to fill available slots (using Config.WORKER_CONCURRENCY dynamically)
+                            # Get queued jobs to fill available slots
                             # Use lock to ensure thread-safe SQLite access
                             with self.db_lock:
                                 queued_jobs = get_queued_jobs(db, limit=available_slots)
 
-                                for job in queued_jobs:
-                                    # Atomically claim the job (prevents race conditions)
-                                    if claim_job(db, job.id):
-                                        print(f"🚀 Starting job {job.id} ({len(active_futures) + 1}/{self.concurrency} slots)")
-                                        future = executor.submit(self.process_job, job.id)
-                                        active_futures[future] = job.id
-                                    else:
-                                        print(f"⚠️  Job {job.id} already claimed by another thread")
+                                if queued_jobs:
+                                    for job in queued_jobs:
+                                        # Atomically claim the job (prevents race conditions)
+                                        if claim_job(db, job.id):
+                                            active_count = len(active_futures) + 1
+                                            print(f"\n🚀 Starting job {job.id} (slot {active_count}/{self.concurrency})")
+                                            future = executor.submit(self.process_job, job.id)
+                                            active_futures[future] = job.id
+                                        else:
+                                            print(f"⚠️  Job {job.id} already claimed by another thread")
 
-                        # Show status
+                        # Show status (don't spam if running jobs)
                         if active_futures:
                             print(f"⏳ {len(active_futures)}/{self.concurrency} job(s) running...", end='\r')
                         else:
-                            print(f"⏳ No jobs in queue. Checking again in {self.check_interval}s...", end='\r')
+                            print(f"⏳ No jobs in queue. Waiting for new jobs...", end='\r')
 
-                        time.sleep(1)  # Check every second for completed jobs
+                        # Fast polling when slots available, slower when all busy
+                        if available_slots > 0:
+                            time.sleep(0.1)  # Check every 100ms when slots available
+                        else:
+                            time.sleep(0.5)  # Check every 500ms when all slots busy
 
                     finally:
                         db.close()
