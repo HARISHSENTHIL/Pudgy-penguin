@@ -3,6 +3,7 @@ FastAPI application for Pudgy GIF generation service.
 """
 
 from fastapi import FastAPI, Depends, HTTPException, status
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
 from pathlib import Path
@@ -15,6 +16,14 @@ app = FastAPI(
     title="Pudgy GIF Generator API",
     description="AI-powered Pudgy Penguin GIF generation service",
     version="1.0.0"
+)
+
+# CORS configuration: allow all origins, methods, and headers
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 # Initialize database on startup
