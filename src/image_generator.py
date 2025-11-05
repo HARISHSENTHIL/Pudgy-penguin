@@ -332,6 +332,65 @@ class PudgyGIFGenerator:
             print(f"❌ FFmpeg error: {e.stderr.decode()}")
             raise
 
+    def video_to_webp(
+        self,
+        frames,
+        output_path,
+        fps=None,
+        max_width=None,
+        quality=80
+    ):
+        """
+        Convert video frames to optimized WebP using ffmpeg.
+
+        Args:
+            frames: List of PIL Images
+            output_path: Output .webp path
+            fps: Frames per second (defaults to Config)
+            max_width: Max width in pixels (defaults to Config)
+            quality: WebP quality 0-100 (default 80, higher = better quality)
+
+        Returns:
+            Path to created WebP
+        """
+        # Use Config defaults if not provided
+        fps = fps or Config.DEFAULT_GIF_FPS
+        max_width = max_width or Config.DEFAULT_GIF_WIDTH
+
+        print(f"🎞️  Converting to WebP...")
+        print(f"   FPS: {fps}, Max width: {max_width}, Quality: {quality}")
+
+        output_path = Path(output_path)
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+
+        # Save frames as temporary MP4
+        temp_mp4 = output_path.with_suffix('.mp4')
+        export_to_video(frames, str(temp_mp4), fps=fps)
+
+        # Convert to WebP with libwebp
+        cmd = [
+            'ffmpeg', '-y', '-i', str(temp_mp4),
+            '-vcodec', 'libwebp',
+            '-vf', f'fps={fps},scale={max_width}:-1:flags=lanczos',
+            '-lossless', '0',
+            '-quality', str(quality),
+            '-loop', '0',
+            str(output_path)
+        ]
+
+        try:
+            subprocess.run(cmd, check=True, capture_output=True)
+            # Clean up temp MP4
+            temp_mp4.unlink()
+
+            file_size_mb = output_path.stat().st_size / (1024 * 1024)
+            print(f"✅ WebP created: {output_path}")
+            print(f"   Size: {file_size_mb:.2f} MB")
+            return output_path
+        except subprocess.CalledProcessError as e:
+            print(f"❌ FFmpeg error: {e.stderr.decode()}")
+            raise
+
     def generate_gif(
         self,
         prompt,
@@ -433,8 +492,10 @@ class PudgyGIFGenerator:
         )
         print()
 
-        print("STEP 3: Converting to optimized GIF")
+        print("STEP 3: Converting to optimized formats")
         print("-" * 60)
+
+        # Generate GIF
         gif_path = self.output_dir / f"{output_name}.gif"
         self.video_to_gif(
             frames=frames,
@@ -444,18 +505,30 @@ class PudgyGIFGenerator:
             optimize=True
         )
 
+        # Generate WebP
+        webp_path = self.output_dir / f"{output_name}.webp"
+        self.video_to_webp(
+            frames=frames,
+            output_path=webp_path,
+            fps=gif_fps,
+            max_width=gif_width,
+            quality=80
+        )
+
         print("\n" + "="*60)
         print("✅ PIPELINE COMPLETE!")
         print("="*60)
         print(f"📁 Outputs:")
         print(f"   Image: {image_path}")
         print(f"   GIF:   {gif_path}")
+        print(f"   WebP:  {webp_path}")
         print()
 
         return {
             "image": image,
             "frames": frames,
             "gif_path": gif_path,
+            "webp_path": webp_path,
             "image_path": image_path
         }
 

@@ -31,6 +31,7 @@ class StatusResponse(BaseModel):
     created_at: datetime
     updated_at: datetime
     gif_url: Optional[str] = None
+    webp_url: Optional[str] = None
     error_message: Optional[str] = None
 
 
