@@ -109,7 +109,7 @@ def get_status(job_id: str, db: Session = Depends(get_db)):
     return response
 
 
-@app.get("/download/{job_id}")
+@app.get("/v1/download/{job_id}")
 def download_file(job_id: str, format: str = "gif", db: Session = Depends(get_db)):
     """
     Download the generated file in the requested format.
