@@ -19,6 +19,7 @@ class Job(Base):
     prompt = Column(Text, nullable=False)
     status = Column(String, default="queued")  # queued, processing, completed, failed
     gif_path = Column(String, nullable=True)
+    webp_path = Column(String, nullable=True)
     error_message = Column(Text, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
@@ -72,7 +73,7 @@ def get_job(db, job_id: str) -> Job:
 
 
 def update_job_status(db, job_id: str, status: str,
-                      gif_path: str = None, error_message: str = None):
+                      gif_path: str = None, webp_path: str = None, error_message: str = None):
     """Update job status and optional fields."""
     job = get_job(db, job_id)
     if job:
@@ -80,6 +81,8 @@ def update_job_status(db, job_id: str, status: str,
         job.updated_at = datetime.utcnow()
         if gif_path:
             job.gif_path = gif_path
+        if webp_path:
+            job.webp_path = webp_path
         if error_message:
             job.error_message = error_message
         db.commit()

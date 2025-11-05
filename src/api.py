@@ -95,9 +95,12 @@ def get_status(job_id: str, db: Session = Depends(get_db)):
         "updated_at": job.updated_at
     }
 
-    # Add GIF URL if completed
-    if job.status == "completed" and job.gif_path:
-        response["gif_url"] = f"/download/{job.id}"
+    # Add download URLs if completed
+    if job.status == "completed":
+        if job.gif_path:
+            response["gif_url"] = f"/download/{job.id}?format=gif"
+        if job.webp_path:
+            response["webp_url"] = f"/download/{job.id}?format=webp"
 
     # Add error message if failed
     if job.status == "failed" and job.error_message:
@@ -107,16 +110,17 @@ def get_status(job_id: str, db: Session = Depends(get_db)):
 
 
 @app.get("/download/{job_id}")
-def download_gif(job_id: str, db: Session = Depends(get_db)):
+def download_file(job_id: str, format: str = "gif", db: Session = Depends(get_db)):
     """
-    Download the generated GIF file.
+    Download the generated file in the requested format.
 
     Args:
         job_id: Job ID
+        format: File format - 'gif' or 'webp' (default: 'gif')
         db: Database session
 
     Returns:
-        GIF file
+        GIF or WebP file
     """
     job = get_job(db, job_id)
 
@@ -132,16 +136,33 @@ def download_gif(job_id: str, db: Session = Depends(get_db)):
             detail=f"Job is not completed yet. Current status: {job.status}"
         )
 
-    if not job.gif_path or not Path(job.gif_path).exists():
+    # Validate format parameter
+    if format not in ["gif", "webp"]:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Invalid format '{format}'. Must be 'gif' or 'webp'"
+        )
+
+    # Get the appropriate file path
+    if format == "gif":
+        file_path = job.gif_path
+        media_type = "image/gif"
+        extension = "gif"
+    else:  # webp
+        file_path = job.webp_path
+        media_type = "image/webp"
+        extension = "webp"
+
+    if not file_path or not Path(file_path).exists():
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="GIF file not found"
+            detail=f"{format.upper()} file not found"
         )
 
     return FileResponse(
-        path=job.gif_path,
-        media_type="image/gif",
-        filename=f"pudgy_{job_id}.gif"
+        path=file_path,
+        media_type=media_type,
+        filename=f"pudgy_{job_id}.{extension}"
     )
 
 

@@ -74,7 +74,7 @@ class JobWorker:
                 image_seed = int(job.image_seed) if job.image_seed else None
                 video_seed = int(job.video_seed) if job.video_seed else None
 
-                # Generate GIF using pre-loaded model
+                # Generate both GIF and WebP using pre-loaded model
                 result = self.generator.generate_gif(
                     prompt=job.prompt,
                     output_name=f"job_{job.id}",
@@ -84,12 +84,14 @@ class JobWorker:
                     video_seed=video_seed
                 )
 
-                # Update job with completed status
+                # Update job with completed status and both file paths
                 gif_path = str(result["gif_path"])
-                update_job_status(db, job.id, "completed", gif_path=gif_path)
+                webp_path = str(result["webp_path"])
+                update_job_status(db, job.id, "completed", gif_path=gif_path, webp_path=webp_path)
 
                 print(f"\n✅ Job {job.id} completed successfully!")
-                print(f"   GIF: {gif_path}")
+                print(f"   GIF:  {gif_path}")
+                print(f"   WebP: {webp_path}")
 
             except Exception as e:
                 error_msg = str(e)
