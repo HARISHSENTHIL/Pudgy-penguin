@@ -24,16 +24,16 @@ def startup_event():
     print("✅ Database initialized")
 
 
-@app.get("/", response_model=HealthResponse)
-def root():
-    """Root endpoint."""
-    return {
-        "status": "ok",
-        "message": "Pudgy GIF Generator API is running"
-    }
+# @app.get("/", response_model=HealthResponse)
+# def root():
+#     """Root endpoint."""
+#     return {
+#         "status": "ok",
+#         "message": "Pudgy GIF Generator API is running"
+#     }
 
 
-@app.get("/health", response_model=HealthResponse)
+@app.get("/v1/health", response_model=HealthResponse)
 def health_check():
     """Health check endpoint."""
     return {
@@ -42,7 +42,7 @@ def health_check():
     }
 
 
-@app.post("/generate", response_model=GenerateResponse, status_code=status.HTTP_201_CREATED)
+@app.post("/v1/chat/completions", response_model=GenerateResponse, status_code=status.HTTP_201_CREATED)
 def generate_gif(request: GenerateRequest, db: Session = Depends(get_db)):
     try:
         job = create_job(
@@ -67,7 +67,7 @@ def generate_gif(request: GenerateRequest, db: Session = Depends(get_db)):
         )
 
 
-@app.get("/status/{job_id}", response_model=StatusResponse)
+@app.get("/v1/status/{job_id}", response_model=StatusResponse)
 def get_status(job_id: str, db: Session = Depends(get_db)):
     """
     Get the status of a generation job.
