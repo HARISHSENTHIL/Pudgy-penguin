@@ -24,7 +24,7 @@ def generate_gif(prompt, use_enhancer, lora_scale, image_seed, video_seed):
     }
 
     try:
-        response = requests.post(f"{API_URL}/generate", json=payload)
+        response = requests.post(f"{API_URL}/v1/chat/completions", json=payload)
         response.raise_for_status()
         job_data = response.json()
         job_id = job_data["job_id"]
@@ -33,12 +33,12 @@ def generate_gif(prompt, use_enhancer, lora_scale, image_seed, video_seed):
         yield None, status_text
 
         while True:
-            status_response = requests.get(f"{API_URL}/status/{job_id}")
+            status_response = requests.get(f"{API_URL}/v1/status/{job_id}")
             status_response.raise_for_status()
             status_info = status_response.json()
 
             if status_info["status"] == "completed":
-                gif_response = requests.get(f"{API_URL}/download/{job_id}")
+                gif_response = requests.get(f"{API_URL}/v1/download/{job_id}")
                 gif_response.raise_for_status()
 
                 output_path = Path(f"temp_{job_id}.gif")
