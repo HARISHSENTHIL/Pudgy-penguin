@@ -33,15 +33,6 @@ def startup_event():
     print("✅ Database initialized")
 
 
-# @app.get("/", response_model=HealthResponse)
-# def root():
-#     """Root endpoint."""
-#     return {
-#         "status": "ok",
-#         "message": "Pudgy GIF Generator API is running"
-#     }
-
-
 @app.get("/v1/health", response_model=HealthResponse)
 def health_check():
     """Health check endpoint."""
