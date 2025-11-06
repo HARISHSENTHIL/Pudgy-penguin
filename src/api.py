@@ -8,7 +8,7 @@ from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
 from pathlib import Path
 
-from src.database import init_db, get_db, create_job, get_job
+from src.database import init_db, get_db, create_job, get_job, get_jobs_by_conversation
 from src.models import GenerateRequest, GenerateResponse, StatusResponse, HealthResponse
 from src.config import Config
 
@@ -51,7 +51,8 @@ def generate_gif(request: GenerateRequest, db: Session = Depends(get_db)):
             use_prompt_enhancer=request.use_prompt_enhancer,
             lora_scale=request.lora_scale,
             image_seed=request.image_seed,
-            video_seed=request.video_seed
+            video_seed=request.video_seed,
+            conversation_id=request.conversation_id
         )
 
         return {
@@ -92,7 +93,8 @@ def get_status(job_id: str, db: Session = Depends(get_db)):
         "status": job.status,
         "prompt": job.prompt,
         "created_at": job.created_at,
-        "updated_at": job.updated_at
+        "updated_at": job.updated_at,
+        "conversation_id": job.conversation_id
     }
 
     # Add download URLs if completed
@@ -107,6 +109,54 @@ def get_status(job_id: str, db: Session = Depends(get_db)):
         response["error_message"] = job.error_message
 
     return response
+
+
+@app.get("/v1/conversation/{conversation_id}")
+def get_conversation_history(conversation_id: str, db: Session = Depends(get_db)):
+    """
+    Get all jobs for a specific conversation ID.
+
+    Args:
+        conversation_id: Conversation/session ID
+        db: Database session
+
+    Returns:
+        List of jobs in the conversation
+    """
+    jobs = get_jobs_by_conversation(db, conversation_id)
+
+    if not jobs:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"No jobs found for conversation {conversation_id}"
+        )
+
+    # Format response
+    result = []
+    for job in jobs:
+        job_data = {
+            "job_id": job.id,
+            "status": job.status,
+            "prompt": job.prompt,
+            "created_at": job.created_at,
+            "updated_at": job.updated_at,
+            "conversation_id": job.conversation_id
+        }
+
+        # Add download URLs if completed
+        if job.status == "completed":
+            if job.gif_path:
+                job_data["gif_url"] = f"/download/{job.id}?format=gif"
+            if job.webp_path:
+                job_data["webp_url"] = f"/download/{job.id}?format=webp"
+
+        # Add error message if failed
+        if job.status == "failed" and job.error_message:
+            job_data["error_message"] = job.error_message
+
+        result.append(job_data)
+
+    return {"conversation_id": conversation_id, "jobs": result, "total": len(result)}
 
 
 @app.get("/v1/download/{job_id}")

@@ -14,6 +14,7 @@ class GenerateRequest(BaseModel):
     lora_scale: float = Field(0.8, ge=0.6, le=1.2, description="LoRA strength (0.6-1.2)")
     image_seed: Optional[int] = Field(None, description="Random seed for image generation")
     video_seed: Optional[int] = Field(None, description="Random seed for video generation")
+    conversation_id: Optional[str] = Field(None, description="Conversation/session ID for tracking history")
 
 
 class GenerateResponse(BaseModel):
@@ -30,6 +31,7 @@ class StatusResponse(BaseModel):
     prompt: str
     created_at: datetime
     updated_at: datetime
+    conversation_id: Optional[str] = None
     gif_url: Optional[str] = None
     webp_url: Optional[str] = None
     error_message: Optional[str] = None

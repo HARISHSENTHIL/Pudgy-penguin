@@ -29,6 +29,7 @@ class Job(Base):
     lora_scale = Column(String, default="0.8")
     image_seed = Column(String, nullable=True)
     video_seed = Column(String, nullable=True)
+    conversation_id = Column(String, nullable=True, index=True)
 
 
 def init_db():
@@ -47,7 +48,7 @@ def get_db():
 
 def create_job(db, prompt: str, use_prompt_enhancer: bool = True,
                lora_scale: float = 0.8, image_seed: int = None,
-               video_seed: int = None) -> Job:
+               video_seed: int = None, conversation_id: str = None) -> Job:
     """Create a new job in the database."""
     job_id = str(uuid.uuid4())
 
@@ -58,7 +59,8 @@ def create_job(db, prompt: str, use_prompt_enhancer: bool = True,
         use_prompt_enhancer=str(use_prompt_enhancer).lower(),
         lora_scale=str(lora_scale),
         image_seed=str(image_seed) if image_seed else None,
-        video_seed=str(video_seed) if video_seed else None
+        video_seed=str(video_seed) if video_seed else None,
+        conversation_id=conversation_id
     )
 
     db.add(job)
@@ -113,3 +115,19 @@ def claim_job(db, job_id: str) -> bool:
         db.refresh(job)
         return True
     return False
+
+
+def get_jobs_by_conversation(db, conversation_id: str):
+    """
+    Get all jobs for a specific conversation ID, ordered by creation time.
+
+    Args:
+        db: Database session
+        conversation_id: Conversation ID to filter by
+
+    Returns:
+        List of Job objects
+    """
+    return db.query(Job).filter(
+        Job.conversation_id == conversation_id
+    ).order_by(Job.created_at.asc()).all()
